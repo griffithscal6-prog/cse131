@@ -1,0 +1,32 @@
+{
+    "Names": [
+        "Alice",
+        "Bob",
+        "Charlie"
+    ],
+    "Phones Numbers": [
+        "123-456-7890",
+        "987-654-3210",
+        "555-555-5555"
+    ],
+    "Ages": [
+        25,
+        30,
+        35
+    ],
+    "Occupations": [
+        "Engineer",
+        "Doctor",
+        "Artist"
+    ],
+    "Addresses": [
+        "123 Main St",
+        "456 Elm St",
+        "789 Oak St"
+    ],
+    "Money Owed to Me": [
+        125.5,
+        290.75,
+        301.0
+    ]
+}
