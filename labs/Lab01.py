@@ -7,7 +7,7 @@
 # 4. What was the hardest part? Be as specific as possible.
 #      My hardest part was figuring out how to get around the problem of my computer screen constantly freezing, (In otherwords my computer is cracked and I sometimes have to constantlty close the screen to get it to unfreeze)
 # 5. How long did it take for you to complete the assignment?
-#      -total time in hours including reading the assignment and submitting the program-
+#      -- It took me aproxiamately 3 hours to complete the required code for the assignment, and then another hour to go above and beyond to figure out how to add score keeping to the game. It also took me a few minutes to get it so the game would play again if the user wanted to play again.--
 
 import json
 x_wins = 0
