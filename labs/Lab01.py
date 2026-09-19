@@ -86,11 +86,13 @@ def play_game(board):
         else:
             player = O
 
-        choice = input(f"{player}'s turn. Enter a number from 1 to 9, or 'q' to quit: ")
+        choice = input(f"{player}'s turn. Enter a number from 1 to 9, or 'q' to save, or 'r' to quit: ")
 
         if choice.lower() == 'q':
             save_board(filename, board)
             print("Game saved. Goodbye!")
+            return False
+        if choice.lower() == 'r':
             return False
 
         square = int(choice) - 1
