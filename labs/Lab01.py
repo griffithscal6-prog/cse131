@@ -93,6 +93,8 @@ def play_game(board):
             print("Game saved. Goodbye!")
             return False
         if choice.lower() == 'r':
+            board = blank_board['board'].copy()
+            
             return False
 
         square = int(choice) - 1
