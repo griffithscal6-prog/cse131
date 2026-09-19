@@ -89,6 +89,8 @@ def play_game(board):
         choice = input(f"{player}'s turn. Enter a number from 1 to 9, or 'q' to quit: ")
 
         if choice.lower() == 'q':
+            save_board(filename, board)
+            print("Game saved. Goodbye!")
             return False
 
         square = int(choice) - 1
@@ -103,10 +105,13 @@ def play_game(board):
 
         board[square] = player
 
+        # Save the board after every move.
+        save_board(filename, board)
+
     display_board(board)
     game_done(board, True)
 
-    # Determine who won
+    # Determine who won.
     for row in range(3):
         if board[row * 3] != BLANK and board[row * 3] == board[row * 3 + 1] == board[row * 3 + 2]:
             return board[row * 3]
@@ -177,10 +182,12 @@ filename = "tic_tac_toe.json"
 
 while True:
 
-    board = blank_board['board'].copy()
+    # Read the saved board if one exists.
+    board = read_board(filename)
 
     result = play_game(board)
 
+    # False means the user quit.
     if result == False:
         break
 
@@ -197,7 +204,12 @@ while True:
     print("O wins:", o_wins)
     print("Ties:", ties)
 
+    # The game is finished, so reset the saved board.
+    board = blank_board['board'].copy()
+    save_board(filename, board)
+
     again = input("Would you like to play again? (y/n): ")
 
     if again.lower() != 'y':
         break
+    
