@@ -10,7 +10,9 @@
 #      -total time in hours including reading the assignment and submitting the program-
 
 import json
-
+x_wins = 0
+o_wins = 0
+ties = 0
 # The characters used in the Tic-Tac-Too board.
 # These are constants and therefore should never have to change.
 X = 'X'
@@ -30,25 +32,94 @@ blank_board = {
 def read_board(filename):
     '''Read the previously existing board from the file if it exists.'''
     # Put file reading code here.
-    return blank_board['board']
+    try:
+        with open(filename, 'r') as file:
+            data = json.load(file)
+            return data['board']
+    except FileNotFoundError:
+        return blank_board['board'].copy()
 
 def save_board(filename, board):
     '''Save the current game to a file.'''
     # Put file writing code here.
+    data = {
+        "board": board
+    }
+
+    with open(filename, 'w') as file:
+        json.dump(data, file)
 
 def display_board(board):
     '''Display a Tic-Tac-Toe board on the screen in a user-friendly way.'''
     # Put display code here.
+    print()
+    print(f" {board[0]} | {board[1]} | {board[2]} ")
+    print("---+---+---")
+    print(f" {board[3]} | {board[4]} | {board[5]} ")
+    print("---+---+---")
+    print(f" {board[6]} | {board[7]} | {board[8]} ")
+    print()
 
 def is_x_turn(board):
     '''Determine whose turn it is.'''
     # Put code here determining if it is X's turn.
-    return True
+    x_count = board.count(X)
+    o_count = board.count(O)
+
+    if x_count == o_count:
+        return True  # X's turn
+    else:
+        return False  # O's turn
+
+
 
 def play_game(board):
     '''Play the game of Tic-Tac-Toe.'''
     # Put game play code here. Return False when the user has indicated they are done.
-    return False
+
+    while not game_done(board):
+
+        display_board(board)
+
+        if is_x_turn(board):
+            player = X
+        else:
+            player = O
+
+        choice = input(f"{player}'s turn. Enter a number from 1 to 9, or 'q' to quit: ")
+
+        if choice.lower() == 'q':
+            return False
+
+        square = int(choice) - 1
+
+        if square < 0 or square > 8:
+            print("Please enter a number from 1 to 9.")
+            continue
+
+        if board[square] != BLANK:
+            print("That square is already taken.")
+            continue
+
+        board[square] = player
+
+    display_board(board)
+    game_done(board, True)
+
+    # Determine who won
+    for row in range(3):
+        if board[row * 3] != BLANK and board[row * 3] == board[row * 3 + 1] == board[row * 3 + 2]:
+            return board[row * 3]
+
+    for col in range(3):
+        if board[col] != BLANK and board[col] == board[3 + col] == board[6 + col]:
+            return board[col]
+
+    if board[4] != BLANK and (board[0] == board[4] == board[8] or
+                              board[2] == board[4] == board[6]):
+        return board[4]
+
+    return "tie"
 
 def game_done(board, message=False):
     '''Determine if the game is finished.
@@ -102,3 +173,31 @@ print(" 7 | 8 | 9 \n")
 print("The current board is:")
 
 # The file read code, game loop code, and file close code goes here.
+filename = "tic_tac_toe.json"
+
+while True:
+
+    board = blank_board['board'].copy()
+
+    result = play_game(board)
+
+    if result == False:
+        break
+
+    if result == X:
+        x_wins += 1
+    elif result == O:
+        o_wins += 1
+    else:
+        ties += 1
+
+    print()
+    print("Game totals:")
+    print("X wins:", x_wins)
+    print("O wins:", o_wins)
+    print("Ties:", ties)
+
+    again = input("Would you like to play again? (y/n): ")
+
+    if again.lower() != 'y':
+        break
