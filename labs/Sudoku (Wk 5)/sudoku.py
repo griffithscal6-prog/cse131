@@ -7,7 +7,7 @@
 # 4. What was the hardest part? Be as specific as possible.
 #      The hardest part was getting the program to check if the user input was valid and then to check if the number the user input was valid for the cell they selected. I had to make sure that the program would check the row, column, and 3x3 square for any duplicates of the number the user input. 
 # 5. How long did it take for you to complete the assignment?
-#      3 hours
+#      4 hours
 
 import json
 
