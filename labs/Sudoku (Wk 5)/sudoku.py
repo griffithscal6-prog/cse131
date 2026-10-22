@@ -1,11 +1,11 @@
 # 1. Name:
 #      Calvin Griffiths
 # 2. Assignment Name:
-#      Lab 05 : Sudoku Draft
+#      Lab 06 : Sudoku Program
 # 3. Assignment Description:
 #      This program is meant to be used to allow a user to solve Sudoku puzzles.
 # 4. What was the hardest part? Be as specific as possible.
-#      The hardest part was getting the program to check if the user input was valid and then to check if the puzzle was solved correctly. I had to figure out how to check if the numbers in each row, column, and 3x3 box were unique and within the range of 1-9. I also had to figure out how to handle invalid input from the user, such as entering a number that is already in the row, column, or box.
+#      The hardest part was getting the program to check if the user input was valid and then to check if the number the user input was valid for the cell they selected. I had to make sure that the program would check the row, column, and 3x3 square for any duplicates of the number the user input. 
 # 5. How long did it take for you to complete the assignment?
 #      3 hours
 
@@ -123,11 +123,52 @@ def get_cell_coordinates(coordinate):
 
     return column, row
 
+def get_legal_values(board, row, column):
+    '''Return all numbers that can legally go in a cell.'''
+    legal_values = []
+
+    for number in range(1, 10):
+        is_valid = True
+
+        # Check the selected row.
+        for j in range(9):
+            if j != column and board[row][j] == number:
+                is_valid = False
+                break
+
+        # Check the selected column.
+        if is_valid:
+            for i in range(9):
+                if i != row and board[i][column] == number:
+                    is_valid = False
+                    break
+
+        # Find the top-left corner of the 3x3 square.
+        box_row = (row // 3) * 3
+        box_column = (column // 3) * 3
+
+        # Check the selected 3x3 square.
+        if is_valid:
+            for i in range(box_row, box_row + 3):
+                for j in range(box_column, box_column + 3):
+                    if (i != row or j != column) and board[i][j] == number:
+                        is_valid = False
+                        break
+
+                if not is_valid:
+                    break
+
+        # Add the number if it passes all three checks.
+        if is_valid:
+            legal_values.append(number)
+
+    return legal_values
+
+
 def enter_number(board):
     '''Allow the user to enter a number into a cell.'''
     coordinate = input(
-        "Enter a cell coordinate, 'S' to save, "
-        "or 'Q' to quit without saving: "
+        "\nEnter a cell coordinate, 'S' to save, or 'Q' to quit without saving: "
     ).strip().upper()
 
     if coordinate == 'S':
@@ -148,15 +189,42 @@ def enter_number(board):
         print("You cannot change an original puzzle clue.")
         return None
 
-    number = input("Enter a number (1-9, or 0 to clear the cell): ").strip()
+    number = input("Enter a number (1-9, 'hint' for legal values, or 0 to clear the cell): ").strip()
 
-    if len(number) != 1 or number not in "0123456789":
-        print("Invalid number. Please enter a digit from 0 to 9.")
+    if number.lower() == 'hint':
+        legal_values = get_legal_values(board, row, column)
+
+        if legal_values:
+            print(f"Legal values for cell {coordinate}: {legal_values}")
+        else:
+            print(f"No legal values available for cell {coordinate}.")
         return None
 
-    board[row][column] = int(number)
+    if len(number) != 1 or number not in "0123456789":
+        print("Invalid number. Please enter a digit from 0 to 9 or 'hint'.")
+        return None
 
-    print("Cell updated!")
+    
+    number = int(number)
+
+    if number == 0:
+        board[row][column] = 0
+        print(f"{coordinate} Cleared! ")
+        return None
+    
+    # Check the row, column, and 3x3 square.
+    legal_values = get_legal_values(board, row, column)
+
+    if number != 0 and number not in legal_values:
+        print(
+            f"Invalid move! {number} already appears in the "
+            "selected row, column, or 3x3 square. Please try again."
+            )
+        return None
+    
+    board[row][column] = number
+
+    print(f"{coordinate} updated!")
     return None
 
 # Load the original puzzle separately.
