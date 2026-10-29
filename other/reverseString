@@ -36,7 +36,7 @@ def main():
     print()
 
     # Display Fibonacci numbers
-    u = int(input("Please enter the number in the sequence you want to calculate to? "))
+    u = int(input("Please enter the number in the fibonacci sequence you want to calculate to? "))
     for i in range(u + 1):
         print(f"Fibonacci({i}) = {fibonacci_recursion(i)}")
 
