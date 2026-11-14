@@ -33,7 +33,7 @@ def read_numbers() -> list[int]:
 
             return numbers
         except ValueError:
-            print("Please enter only whole numbers separated by spaces.")
+            print("Please enter only whole numbers (can include negative numbers) separated by spaces.")
 
 
 def find_run_end(source: list[int], start: int) -> int:
