@@ -10,6 +10,8 @@
 #      The hardest part was keeping track of the indexes for the two sorted sub-lists while merging them into the
 #      destination list. The program also needs to handle a pass with an odd number of sub-lists. In that case, the last
 #      sub-list must be copied to the destination unchanged.
+#     I added print statements to display the sub-lists being merged and the result of the merge. This helped me debug the
+#     program and understand how the merge function works throughout each pass.
 # 5. How long did it take for you to complete the assignment?
 #      It took me about 2 hours to complete the assignment. I spent a lot of time debugging the merge function and
 #      making sure that the indexes were being updated correctly. I also had to test the program with different inputs
