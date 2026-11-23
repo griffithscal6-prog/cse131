@@ -1,0 +1,192 @@
+import tkinter as tk
+import random
+
+WIDTH, HEIGHT = 600, 700
+
+
+class ProjectileAgent:
+    def __init__(self, x, y, speed, enemy=False):
+        self.x, self.y, self.speed, self.enemy = x, y, speed, enemy
+
+    def update(self):
+        self.y += self.speed
+
+    def draw(self, canvas):
+        color = "#ff6464" if self.enemy else "#65f4ff"
+        canvas.create_rectangle(self.x - 3, self.y - 9, self.x + 3, self.y + 9,
+                                fill=color, outline="", tags="game")
+
+
+class PlayerAgent:
+    def __init__(self):
+        self.x, self.y = WIDTH // 2, HEIGHT - 55
+        self.cooldown = 0
+        self.lives = 3
+
+    def act(self, keys):
+        if "left" in keys or "a" in keys:
+            self.x -= 6
+        if "right" in keys or "d" in keys:
+            self.x += 6
+        self.x = max(25, min(WIDTH - 25, self.x))
+
+        self.cooldown = max(0, self.cooldown - 1)
+        if "space" in keys and self.cooldown == 0:
+            self.cooldown = 13
+            return ProjectileAgent(self.x, self.y - 22, -11)
+        return None
+
+    def draw(self, canvas):
+        canvas.create_polygon(self.x, self.y - 23, self.x - 23, self.y + 18,
+                              self.x + 23, self.y + 18, fill="#69e88b",
+                              outline="white", tags="game")
+
+
+class InvaderAgent:
+    def __init__(self, x, y):
+        self.x, self.y = x, y
+
+    def act(self, dx, drop):
+        self.x += dx
+        self.y += drop
+
+    def shoot(self):
+        return ProjectileAgent(self.x, self.y + 15, 5, enemy=True)
+
+    def draw(self, canvas):
+        canvas.create_rectangle(self.x - 15, self.y - 11, self.x + 15, self.y + 11,
+                                fill="#b68cff", outline="white", tags="game")
+        canvas.create_rectangle(self.x - 9, self.y - 4, self.x - 4, self.y + 2,
+                                fill="#11152e", outline="", tags="game")
+        canvas.create_rectangle(self.x + 4, self.y - 4, self.x + 9, self.y + 2,
+                                fill="#11152e", outline="", tags="game")
+
+
+class GameAgent:
+    def __init__(self, root):
+        self.root = root
+        self.canvas = tk.Canvas(root, width=WIDTH, height=HEIGHT,
+                                bg="#080d24", highlightthickness=0)
+        self.canvas.pack()
+        self.canvas.focus_set()
+        self.keys = set()
+        root.bind("<KeyPress>", self.key_down)
+        root.bind("<KeyRelease>", self.key_up)
+        self.reset()
+        self.draw_stars()
+        self.tick()
+
+    def reset(self):
+        self.player = PlayerAgent()
+        self.invaders = [InvaderAgent(65 + col * 62, 75 + row * 48)
+                         for row in range(4) for col in range(8)]
+        self.bullets = []
+        self.direction, self.speed = 1, 1.5
+        self.score, self.level = 0, 1
+        self.game_over = False
+        self.won = False
+
+    def draw_stars(self):
+        for _ in range(75):
+            x, y = random.randint(2, WIDTH - 2), random.randint(2, HEIGHT - 2)
+            r = random.choice((1, 1, 2))
+            self.canvas.create_oval(x, y, x + r, y + r, fill="#536080",
+                                    outline="", tags="background")
+
+    def key_down(self, event):
+        key = event.keysym.lower() if event.keysym != "space" else "space"
+        self.keys.add(key)
+        if self.game_over and key == "r":
+            self.reset()
+
+    def key_up(self, event):
+        key = event.keysym.lower() if event.keysym != "space" else "space"
+        self.keys.discard(key)
+
+    def update(self):
+        if self.game_over:
+            return
+
+        shot = self.player.act(self.keys)
+        if shot:
+            self.bullets.append(shot)
+
+        dx, drop = self.direction * self.speed, 0
+        if any(alien.x + dx < 20 or alien.x + dx > WIDTH - 20
+               for alien in self.invaders):
+            self.direction *= -1
+            dx, drop = self.direction * self.speed, 18
+        for alien in self.invaders:
+            alien.act(dx, drop)
+
+        # The invader group occasionally chooses one member to fire.
+        if self.invaders and random.random() < 0.025:
+            self.bullets.append(random.choice(self.invaders).shoot())
+
+        for bullet in self.bullets[:]:
+            bullet.update()
+            if bullet.y < 0 or bullet.y > HEIGHT:
+                self.bullets.remove(bullet)
+                continue
+
+            if bullet.enemy:
+                if abs(bullet.x - self.player.x) < 23 and abs(bullet.y - self.player.y) < 22:
+                    self.bullets.remove(bullet)
+                    self.player.lives -= 1
+                    if self.player.lives <= 0:
+                        self.game_over = True
+            else:
+                hit = next((a for a in self.invaders
+                            if abs(bullet.x - a.x) < 18 and abs(bullet.y - a.y) < 15), None)
+                if hit:
+                    self.invaders.remove(hit)
+                    self.bullets.remove(bullet)
+                    self.score += 10
+
+        if any(a.y > self.player.y - 30 for a in self.invaders):
+            self.game_over = True
+        if not self.game_over and not self.invaders:
+            if self.level == 3:
+                self.game_over, self.won = True, True
+            else:
+                self.level += 1
+                self.speed += 0.4
+                self.invaders = [InvaderAgent(65 + col * 62, 65 + row * 48)
+                                 for row in range(4) for col in range(8)]
+                self.bullets = [b for b in self.bullets if not b.enemy]
+
+    def draw(self):
+        self.canvas.delete("game")
+        self.player.draw(self.canvas)
+        for alien in self.invaders:
+            alien.draw(self.canvas)
+        for bullet in self.bullets:
+            bullet.draw(self.canvas)
+
+        self.canvas.create_text(12, 15, anchor="w", fill="white",
+                                font=("Arial", 14, "bold"),
+                                text=f"Score: {self.score}    Lives: {self.player.lives}    Level: {self.level}",
+                                tags="game")
+        self.canvas.create_text(WIDTH // 2, HEIGHT - 15, fill="#aab6d3",
+                                font=("Arial", 10),
+                                text="Move: A/D or ←/→     Shoot: SPACE", tags="game")
+
+        if self.game_over:
+            message = "YOU WIN!" if self.won else "GAME OVER"
+            self.canvas.create_text(WIDTH // 2, HEIGHT // 2, fill="white",
+                                    font=("Arial", 34, "bold"), text=message, tags="game")
+            self.canvas.create_text(WIDTH // 2, HEIGHT // 2 + 45, fill="white",
+                                    font=("Arial", 16), text="Press R to restart", tags="game")
+
+    def tick(self):
+        self.update()
+        self.draw()
+        self.root.after(20, self.tick)
+
+
+if __name__ == "__main__":
+    window = tk.Tk()
+    window.title("Space Invaders - Agent Game")
+    window.resizable(False, False)
+    GameAgent(window)
+    window.mainloop()
