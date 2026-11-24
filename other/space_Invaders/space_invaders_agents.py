@@ -11,6 +11,9 @@ class ProjectileAgent:
     def update(self):
         self.y += self.speed
 
+    def hits(self, target, width, height):
+        return abs(self.x - target.x) < width and abs(self.y - target.y) < height
+
     def draw(self, canvas):
         color = "#ff6464" if self.enemy else "#65f4ff"
         canvas.create_rectangle(self.x - 3, self.y - 9, self.x + 3, self.y + 9,
@@ -18,6 +21,16 @@ class ProjectileAgent:
 
 
 class PlayerAgent:
+    SPRITE = (
+        "000010000",
+        "000111000",
+        "001111100",
+        "011111110",
+        "111111111",
+        "110101011",
+        "100000001",
+    )
+
     def __init__(self):
         self.x, self.y = WIDTH // 2, HEIGHT - 55
         self.cooldown = 0
@@ -37,12 +50,33 @@ class PlayerAgent:
         return None
 
     def draw(self, canvas):
-        canvas.create_polygon(self.x, self.y - 23, self.x - 23, self.y + 18,
-                              self.x + 23, self.y + 18, fill="#69e88b",
-                              outline="white", tags="game")
+        pixel = 6
+        for row, line in enumerate(self.SPRITE):
+            for col, cell in enumerate(line):
+                if cell == "1":
+                    x, y = self.x - 27 + col * pixel, self.y - 21 + row * pixel
+                    canvas.create_rectangle(x, y, x + pixel, y + pixel,
+                                            fill="#69e88b", outline="",
+                                            tags="game")
+        canvas.create_rectangle(self.x - 3, self.y - 9, self.x + 3, self.y - 3,
+                                fill="#65f4ff", outline="", tags="game")
+        for x in (self.x - 15, self.x + 9):
+            canvas.create_rectangle(x, self.y + 21, x + 6, self.y + 27,
+                                    fill="#ffad42", outline="", tags="game")
 
 
 class InvaderAgent:
+    SPRITE = (
+        "00100100",
+        "00011000",
+        "00111100",
+        "01101110",
+        "11111111",
+        "10100101",
+        "00100100",
+        "01000010",
+    )
+
     def __init__(self, x, y):
         self.x, self.y = x, y
 
@@ -54,12 +88,61 @@ class InvaderAgent:
         return ProjectileAgent(self.x, self.y + 15, 5, enemy=True)
 
     def draw(self, canvas):
-        canvas.create_rectangle(self.x - 15, self.y - 11, self.x + 15, self.y + 11,
-                                fill="#b68cff", outline="white", tags="game")
-        canvas.create_rectangle(self.x - 9, self.y - 4, self.x - 4, self.y + 2,
-                                fill="#11152e", outline="", tags="game")
-        canvas.create_rectangle(self.x + 4, self.y - 4, self.x + 9, self.y + 2,
-                                fill="#11152e", outline="", tags="game")
+        pixel = 4
+        for row, line in enumerate(self.SPRITE):
+            for col, cell in enumerate(line):
+                if cell == "1":
+                    x, y = self.x - 16 + col * pixel, self.y - 16 + row * pixel
+                    canvas.create_rectangle(x, y, x + pixel, y + pixel,
+                                            fill="#9cff57", outline="",
+                                            tags="game")
+
+
+class ShieldAgent:
+    SHAPE = (
+        "00111111111100",
+        "01111111111110",
+        "11111111111111",
+        "11111111111111",
+        "11111111111111",
+        "11111111111111",
+        "11110000001111",
+        "11100000000111",
+    )
+
+    def __init__(self, x, y, scale):
+        self.x, self.y, self.scale = x, y, scale
+        self.cell = 4 * scale
+        self.blocks = {(col, row) for row, line in enumerate(self.SHAPE)
+                       for col, cell in enumerate(line) if cell == "1"}
+
+    def absorb(self, bullet):
+        for col, row in self.blocks:
+            left = self.x + col * self.cell
+            top = self.y + row * self.cell
+            if (bullet.x + 3 >= left and bullet.x - 3 <= left + self.cell
+                    and bullet.y + 9 >= top and bullet.y - 9 <= top + self.cell):
+                # Remove a small patch around the impact to leave a crater.
+                crater = {(col + dx, row + dy)
+                          for dx in (-1, 0, 1) for dy in (-1, 0, 1)}
+                self.blocks.difference_update(crater)
+                return True
+        return False
+
+    def shrink(self):
+        center_x = self.x + 7 * self.cell
+        center_y = self.y + 4 * self.cell
+        self.cell *= 0.995
+        self.scale *= 0.995
+        self.x = center_x - 7 * self.cell
+        self.y = center_y - 4 * self.cell
+
+    def draw(self, canvas):
+        for col, row in self.blocks:
+            left = self.x + col * self.cell
+            top = self.y + row * self.cell
+            canvas.create_rectangle(left, top, left + self.cell, top + self.cell,
+                                    fill="#52e878", outline="", tags="game")
 
 
 class GameAgent:
@@ -82,9 +165,26 @@ class GameAgent:
                          for row in range(4) for col in range(8)]
         self.bullets = []
         self.direction, self.speed = 1, 1.5
-        self.score, self.level = 0, 1
+        self.score, self.wave = 0, 1
+        self.shields = []
+        self.make_shields()
         self.game_over = False
         self.won = False
+        self.keys.clear()
+
+    def make_shields(self):
+        count = self.wave // 5
+        scale = 0.995 ** (self.wave - 1)
+        for shield in self.shields:
+            shield.shrink()
+        self.shields.extend(ShieldAgent(0, HEIGHT - 155, scale)
+                            for _ in range(count - len(self.shields)))
+        if count:
+            width = 14 * 4 * scale
+            gap = (WIDTH - count * width) / (count + 1)
+            for i, shield in enumerate(self.shields):
+                shield.x = gap + i * (width + gap)
+                shield.y = HEIGHT - 155
 
     def draw_stars(self):
         for _ in range(75):
@@ -129,15 +229,19 @@ class GameAgent:
                 self.bullets.remove(bullet)
                 continue
 
+            if any(shield.absorb(bullet) for shield in self.shields):
+                self.bullets.remove(bullet)
+                continue
+
             if bullet.enemy:
-                if abs(bullet.x - self.player.x) < 23 and abs(bullet.y - self.player.y) < 22:
+                if bullet.hits(self.player, 23, 22):
                     self.bullets.remove(bullet)
                     self.player.lives -= 1
                     if self.player.lives <= 0:
                         self.game_over = True
             else:
                 hit = next((a for a in self.invaders
-                            if abs(bullet.x - a.x) < 18 and abs(bullet.y - a.y) < 15), None)
+                            if bullet.hits(a, 18, 15)), None)
                 if hit:
                     self.invaders.remove(hit)
                     self.bullets.remove(bullet)
@@ -146,26 +250,26 @@ class GameAgent:
         if any(a.y > self.player.y - 30 for a in self.invaders):
             self.game_over = True
         if not self.game_over and not self.invaders:
-            if self.level == 3:
-                self.game_over, self.won = True, True
-            else:
-                self.level += 1
-                self.speed += 0.4
-                self.invaders = [InvaderAgent(65 + col * 62, 65 + row * 48)
-                                 for row in range(4) for col in range(8)]
-                self.bullets = [b for b in self.bullets if not b.enemy]
+            self.wave += 1
+            self.speed *= 1.10
+            self.make_shields()
+            self.invaders = [InvaderAgent(65 + col * 62, 65 + row * 48)
+                             for row in range(4) for col in range(8)]
+            self.bullets = [b for b in self.bullets if not b.enemy]
 
     def draw(self):
         self.canvas.delete("game")
         self.player.draw(self.canvas)
         for alien in self.invaders:
             alien.draw(self.canvas)
+        for shield in self.shields:
+            shield.draw(self.canvas)
         for bullet in self.bullets:
             bullet.draw(self.canvas)
 
         self.canvas.create_text(12, 15, anchor="w", fill="white",
                                 font=("Arial", 14, "bold"),
-                                text=f"Score: {self.score}    Lives: {self.player.lives}    Level: {self.level}",
+                                text=f"Score: {self.score}    Lives: {self.player.lives}    Wave: {self.wave}",
                                 tags="game")
         self.canvas.create_text(WIDTH // 2, HEIGHT - 15, fill="#aab6d3",
                                 font=("Arial", 10),
